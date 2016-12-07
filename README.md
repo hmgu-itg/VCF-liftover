@@ -73,8 +73,11 @@ done
 } | bgzip > $OUTFILE
 ```
 
-## Verifying accuracy of liftover
+## Performance of liftover
+### Speed
+`vcf-liftover` converts 175k variants in about 10 minutes.
 
+### Accuracy 
 UCSC LiftOver also maps positions onto other chromosomes as well. Those typically come from lower-scored chains which `vcf-liftover` ignores. Hence we compare only the cis-mapped positions.
 
 ```
