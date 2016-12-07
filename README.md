@@ -2,12 +2,25 @@
 
 # TL;DR: 
 
-`./vcf_liftover.sh [chain file] [input.vcf.gz] [output.vcf.gz] [chromosome code]`
+## Lifting over a VCF
+
+`./vcf_liftover.sh [chain file] [input.vcf.gz] [output.vcf.gz] [chromosome code] [stop_criterion] [method]`
 
 * `chain file` : chain file that can be downloaded from the USCS website.
 * `input.vcf.gz` : input, tabixed bgzipped VCF format.
 * `output.vcf.gz` : output, will be bgzipped VCF.
 * `chromosome code` : for example, "chr22". This code has to be identical in both the VCF and the chain file.
+* `stop_criterion` : if this is `stop` then the liftover file will stop at the first chain in a chromosome. Unless you are overly concerned with performance, write `nostop`.
+* `method` : `sort` or `files`. The former consumes lots of memory (and uses PicardTools), the latter creates a lot of files (and uses bcftools). Any other value will just generate a file with intervals and offsets to liftover and exit.
+
+`bcftools` should be in your path. If you use `method=sort`, you must edit the `PICARD=...` line in `vcf-liftover` to use your own version/path of Picard. If you use `method=sort`, be prepared to feed a lot of memory to your process as Picard is incredibly leaky and greedy. 170k variants consume more than 20G of RAM.
+
+A run will always produce a file ending in `.offset`, that follows the `chromosome interval_start interval_end offset`. For every position in these intervals, `offset` must be added to obtain a position in the target build. Regions left unmapped by this file will be lost; they are unmappable or map to a different chromosome.
+
+### Example
+```bash
+ ~/vcf-liftover/vcf-liftover.sh hg38ToHg19.over.chain 22.vcf.gz 22.liftover.vcf.gz chr22 dontstop files
+```
 
 ## Principle of a `liftOver`
 
@@ -24,22 +37,19 @@ The following piece of perl code finds the first chain that describes any given 
 
 ```bash
 cat $CHAINFILE | perl -lane '
-if($F[0] eq "chain"){
-	if($curchr eq $F[2]){
-		$skip=1;
-	}else{
-		$curchr=$F[2];
-		our $current=$F[5];
-		our $coffset=$F[10]-$F[5];
-		$skip=0;
-	}
-} elsif(!$skip) {
+    if($F[0] eq "chain"){
+          if($F[2] ne $F[7] || $F[2] ne $ENV{"CHR"}){
+                 $skip=1;
+          }
+          else{$curchr=$F[2];our $current=$F[5];our $coffset=$F[10]-$F[5];$skip=0;}
+    }
+elsif(!$skip) {
 	my $offset=$F[2]-$F[1];
-	print "$curchr $current ", $current+$F[0], " $coffset";
+	print "$curchr $current ", $current+$F[0], " $coffset"; 
 	$current=$current+$F[0]+$F[1];
 	$coffset=$coffset+$offset;
 }
-' > $OURCHAINFILE.offset
+' 
 ```
 
 The code above translates this chain file excerpt:
@@ -75,17 +85,10 @@ done
 
 ## Performance of liftover
 ### Speed
-`vcf-liftover` converts 175k variants in about 10 minutes.
+`vcf-liftover` converts 175k variants in about 
+* 20 minutes with the `files` method
+* 13 minutes with the `sort` method
 
 ### Accuracy 
-UCSC LiftOver also maps positions onto other chromosomes as well. Those typically come from lower-scored chains which `vcf-liftover` ignores. Hence we compare only the cis-mapped positions.
+UCSC LiftOver also maps positions onto other chromosomes as well. `vcf-liftover` purposefully ignores these. Other than that, lifted over positions are identical between the two tools.
 
-```
-~/vcf-liftover/vcf-liftover.sh hg38ToHg19.over.chain 22.vcf.gz 22.liftover.vcf.gz chr22
-zgrep -v '^#' 22.vcf.gz | cut -f1,2 | awk '{print $1, $2-1, $2, $1":"$2}' > 22.bed
-./liftOver 22.bed hg38ToHg19.over.chain 22.new.bed unmapped.bed
-awk '$1=="chr22"' 22.new.bed | cut -f1,3,4 | sed 's/chr22://'> 22.new.formatted.bed
-comm -3 <(sort 22.new.2.bed) <(sort 22.vcf.bed) | wc -l
-```
-
-We find 593/172026=0.3% of SNP mappings that are unique to `vcf-liftover`, and are presumed to be errors. 34/593=6% of these are unmapped by liftOver. As the reasons for having unmapped SNPs is unknown, it is hard to pinpoint the reason for this. The vast majority of the error SNPs are actually mapped to a different chromosome.
