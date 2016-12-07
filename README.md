@@ -90,5 +90,8 @@ done
 * 13 minutes with the `sort` method
 
 ### Accuracy 
-UCSC LiftOver also maps positions onto other chromosomes as well. `vcf-liftover` purposefully ignores these. Other than that, lifted over positions are identical between the two tools.
+* `vcf-liftover` ignores intervals that map on different chromosomes
+* and intervals that map from a positive strand to a negative one.
+
+ Other than that, lifted over positions are identical between the two tools.
 
