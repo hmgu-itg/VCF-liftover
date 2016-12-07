@@ -68,7 +68,21 @@ What we do next is a bit inefficient: given a chromosome-wide VCF file, we loop 
 { 
 tabix -h $INFILE 0:0-1 && cat $OFFSETS | grep $CHR | while read line;  do 
 	IFS=" " read -r -a fields <<< "$line"
-	tabix $INFILE ${fields[0]}:${fields[1]}-${fields[2]} | awk -v offset=${fields[3]} 'BEGIN{OFS="\t"}{$2=$2+offset}1'; 
+	tabix $INFILE ${fields[0]}:${fields[1]}-${fields[2]} | awk -v offset=${fields[3]} 'BEGIN{OFS="\t"}{$2=$2+offset;}1'; 
 done 
 } | bgzip > $OUTFILE
 ```
+
+## Verifying accuracy of liftover
+
+UCSC LiftOver also maps positions onto other chromosomes as well. Those typically come from lower-scored chains which `vcf-liftover` ignores. Hence we compare only the cis-mapped positions.
+
+```
+~/vcf-liftover/vcf-liftover.sh hg38ToHg19.over.chain 22.vcf.gz 22.liftover.vcf.gz chr22
+zgrep -v '^#' 22.vcf.gz | cut -f1,2 | awk '{print $1, $2-1, $2, $1":"$2}' > 22.bed
+./liftOver 22.bed hg38ToHg19.over.chain 22.new.bed unmapped.bed
+awk '$1=="chr22"' 22.new.bed | cut -f1,3,4 | sed 's/chr22://'> 22.new.formatted.bed
+comm -3 <(sort 22.new.2.bed) <(sort 22.vcf.bed) | wc -l
+```
+
+We find 593/172026=0.3% of SNP mappings that are unique to `vcf-liftover`, and are presumed to be errors. 34/593=6% of these are unmapped by liftOver. As the reasons for having unmapped SNPs is unknown, it is hard to pinpoint the reason for this. The vast majority of the error SNPs are actually mapped to a different chromosome.
