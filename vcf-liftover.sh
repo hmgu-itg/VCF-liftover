@@ -20,7 +20,7 @@ if [ "$STOP_AT_FIRST_CHAIN" = "stop" ]; then
 	cat $CHAINFILE | perl -lane 'BEGIN{$visited=0;}
 	if($F[0] eq "chain"){
 		if($visited){exit();}
-			if($F[2] ne $F[7] || $F[2] ne $ENV{"CHR"} || $F[4] eq "-" || $F[8] eq "-"){
+			if($F[2] ne $F[7] || $F[2] ne $ENV{"CHR"} || $F[4] eq "-" || $F[9] eq "-"){
 				$skip=1;
 			}
 		else{$curchr=$F[2];our $current=$F[5];our $coffset=$F[10]-$F[5];$skip=0;$visited=1;}
@@ -30,7 +30,7 @@ if [ "$STOP_AT_FIRST_CHAIN" = "stop" ]; then
 	else
 		cat $CHAINFILE | perl -lane '
 		if($F[0] eq "chain"){
-			if($F[2] ne $F[7] || $F[2] ne $ENV{"CHR"} || $F[4] eq "-" || $F[8] eq "-"){
+			if($F[2] ne $F[7] || $F[2] ne $ENV{"CHR"} || $F[4] eq "-" || $F[9] eq "-"){
 				$skip=1;
 			}
 		else{$curchr=$F[2];our $current=$F[5];our $coffset=$F[10]-$F[5];$skip=0;}
