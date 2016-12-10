@@ -13,7 +13,7 @@
 * `stop_criterion` : if this is `stop` then the liftover file will stop at the first chain in a chromosome. Unless you are overly concerned with performance, write `nostop`.
 * `method` : `fast`, `sort` or `files`. `fast` should always be the default choice: it has minimal memory and disk footprint. `sort` and `files` are two older methods. The former consumes lots of memory (and uses PicardTools), the latter creates a lot of files (and uses bcftools). Any other value will just generate a file with intervals and offsets to liftover and exit.
 
-Please make sure that `tabix` is in your path. On the Sanger Farm, this is done with `module add $(module avail 2>&1 | grep '/tabix/' | grep latest | sed 's/.latest.//')`.
+Please make sure that `tabix` and `bedtools` are in your path. On the Sanger Farm, this is done with `module add $(module avail 2>&1 | grep '/tabix/' | grep latest | sed 's/.latest.//')`, and the same with `bedtools` instead of `tabix`.
 
 If you use `method=files`, `bcftools` should be in your path. If you use `method=sort`, you must export the `PICARD=...` variable to use your own version/path of Picard. If you use `method=sort`, be prepared to feed a lot of memory to your process as Picard is incredibly leaky and greedy. 170k variants consume more than 20G of RAM.
 
