@@ -11,15 +11,17 @@
 * `output.vcf.gz` : output, will be bgzipped VCF.
 * `chromosome code` : for example, "chr22". This code has to be identical in both the VCF and the chain file.
 * `stop_criterion` : if this is `stop` then the liftover file will stop at the first chain in a chromosome. Unless you are overly concerned with performance, write `nostop`.
-* `method` : `sort` or `files`. The former consumes lots of memory (and uses PicardTools), the latter creates a lot of files (and uses bcftools). Any other value will just generate a file with intervals and offsets to liftover and exit.
+* `method` : `fast`, `sort` or `files`. `fast` should always be the default choice: it has minimal memory and disk footprint. `sort` and `files` are two older methods. The former consumes lots of memory (and uses PicardTools), the latter creates a lot of files (and uses bcftools). Any other value will just generate a file with intervals and offsets to liftover and exit.
 
-`bcftools` should be in your path. If you use `method=sort`, you must edit the `PICARD=...` line in `vcf-liftover` to use your own version/path of Picard. If you use `method=sort`, be prepared to feed a lot of memory to your process as Picard is incredibly leaky and greedy. 170k variants consume more than 20G of RAM.
+Please make sure that `tabix` is in your path. On the Sanger Farm, this is done with `module add $(module avail 2>&1 | grep '/tabix/' | grep latest | sed 's/.latest.//')`.
+
+If you use `method=files`, `bcftools` should be in your path. If you use `method=sort`, you must export the `PICARD=...` variable to use your own version/path of Picard. If you use `method=sort`, be prepared to feed a lot of memory to your process as Picard is incredibly leaky and greedy. 170k variants consume more than 20G of RAM.
 
 A run will always produce a file ending in `.offset`, that follows the `chromosome interval_start interval_end offset`. For every position in these intervals, `offset` must be added to obtain a position in the target build. Regions left unmapped by this file will be lost; they are unmappable or map to a different chromosome.
 
 ### Example
 ```bash
- ~/vcf-liftover/vcf-liftover.sh hg38ToHg19.over.chain 22.vcf.gz 22.liftover.vcf.gz chr22 dontstop files
+ ~/vcf-liftover/vcf-liftover.sh hg38ToHg19.over.chain 22.vcf.gz 22.liftover.vcf.gz chr22 dontstop fast
 ```
 
 ## Lifting over a single position
@@ -101,6 +103,7 @@ done
 `vcf-liftover` converts 175k variants in about 
 * 20 minutes with the `files` method
 * 13 minutes with the `sort` method
+* 10 minutes with the `fast` method
 
 ### Accuracy 
 * `vcf-liftover` ignores intervals that map on different chromosomes
